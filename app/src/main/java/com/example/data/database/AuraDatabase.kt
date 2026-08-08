@@ -36,7 +36,7 @@ abstract class AuraDatabase : RoomDatabase() {
                     AuraDatabase::class.java,
                     "aura_studio_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
                 instance

@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -135,7 +135,7 @@ fun ChatMessageItem(
                                 )
                             )
                             Icon(
-                                imageVector = Icons.Default.VolumeUp,
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Listen voice",
                                 tint = NeonCyan,
                                 modifier = Modifier
