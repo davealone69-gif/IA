@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -25,38 +26,39 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.model.PersonaEntity
+import com.example.ui.screens.GeminiPlaygroundScreen
 import com.example.ui.screens.LlmGuideScreen
 import com.example.ui.screens.ModelStudioScreen
 import com.example.ui.screens.RoleplayChatScreen
 import com.example.ui.screens.VideoMakerScreen
-import com.example.ui.theme.DarkBorder
 import com.example.ui.theme.DarkObsidian
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonMagenta
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.viewmodel.AuraViewModel
+import com.example.viewmodel.MainViewModel
 import java.util.Locale
 
+/**
+ * Enterprise Main Activity implementing 100% Jetpack Compose with Edge-to-Edge support.
+ */
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: AuraViewModel by viewModels()
+    private val auraViewModel: AuraViewModel by viewModels()
+    private val mainViewModel: MainViewModel by viewModels()
     private var tts: TextToSpeech? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +75,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 AuraStudioApp(
-                    viewModel = viewModel,
+                    auraViewModel = auraViewModel,
+                    mainViewModel = mainViewModel,
                     onSpeakText = { text -> speakText(text) }
                 )
             }
@@ -96,6 +99,7 @@ class MainActivity : ComponentActivity() {
 
 enum class AuraTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     STUDIO("Model Studio", Icons.Default.AutoAwesome),
+    GEMINI("Gemini AI", Icons.Default.Terminal),
     CHAT("Roleplay Chat", Icons.Default.ChatBubble),
     VIDEO("Video Maker", Icons.Default.Movie),
     GUIDE("LLM Guide", Icons.Default.Psychology)
@@ -103,22 +107,23 @@ enum class AuraTab(val label: String, val icon: androidx.compose.ui.graphics.vec
 
 @Composable
 fun AuraStudioApp(
-    viewModel: AuraViewModel,
+    auraViewModel: AuraViewModel,
+    mainViewModel: MainViewModel,
     onSpeakText: (String) -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(AuraTab.STUDIO) }
     val context = LocalContext.current
 
-    val personas by viewModel.personas.collectAsStateWithLifecycle()
-    val selectedPersona by viewModel.selectedPersona.collectAsStateWithLifecycle()
-    val chatMessages by viewModel.chatMessages.collectAsStateWithLifecycle()
-    val isChatGenerating by viewModel.isChatGenerating.collectAsStateWithLifecycle()
+    val personas by auraViewModel.personas.collectAsStateWithLifecycle()
+    val selectedPersona by auraViewModel.selectedPersona.collectAsStateWithLifecycle()
+    val chatMessages by auraViewModel.chatMessages.collectAsStateWithLifecycle()
+    val isChatGenerating by auraViewModel.isChatGenerating.collectAsStateWithLifecycle()
 
-    val videoProjects by viewModel.videoProjects.collectAsStateWithLifecycle()
-    val activeVideoProject by viewModel.activeVideoProject.collectAsStateWithLifecycle()
-    val parsedScenes by viewModel.parsedScenes.collectAsStateWithLifecycle()
-    val isVideoGenerating by viewModel.isVideoGenerating.collectAsStateWithLifecycle()
-    val isAudioPlaying by viewModel.isAudioPlaying.collectAsStateWithLifecycle()
+    val videoProjects by auraViewModel.videoProjects.collectAsStateWithLifecycle()
+    val activeVideoProject by auraViewModel.activeVideoProject.collectAsStateWithLifecycle()
+    val parsedScenes by auraViewModel.parsedScenes.collectAsStateWithLifecycle()
+    val isVideoGenerating by auraViewModel.isVideoGenerating.collectAsStateWithLifecycle()
+    val isAudioPlaying by auraViewModel.isAudioPlaying.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -174,23 +179,30 @@ fun AuraStudioApp(
                     ModelStudioScreen(
                         personas = personas,
                         onSelectPersonaForChat = { persona ->
-                            viewModel.selectPersona(persona)
+                            auraViewModel.selectPersona(persona)
                             selectedTab = AuraTab.CHAT
                         },
                         onSelectPersonaForVideo = { persona ->
-                            viewModel.selectPersona(persona)
+                            auraViewModel.selectPersona(persona)
                             selectedTab = AuraTab.VIDEO
                         },
                         onCreateCustomModel = { name, title, category, personality, scenario, voiceStyle, systemPrompt, creativity ->
-                            viewModel.createCustomPersona(
+                            auraViewModel.createCustomPersona(
                                 name, title, category, personality, scenario, voiceStyle, systemPrompt, creativity
                             )
                             Toast.makeText(context, "Model '$name' created & saved!", Toast.LENGTH_SHORT).show()
                         },
                         onDeleteCustomModel = { id ->
-                            viewModel.deletePersona(id)
+                            auraViewModel.deletePersona(id)
                             Toast.makeText(context, "Custom model deleted", Toast.LENGTH_SHORT).show()
                         }
+                    )
+                }
+
+                AuraTab.GEMINI -> {
+                    GeminiPlaygroundScreen(
+                        mainViewModel = mainViewModel,
+                        onSpeakText = onSpeakText
                     )
                 }
 
@@ -201,12 +213,12 @@ fun AuraStudioApp(
                         isGenerating = isChatGenerating,
                         onSendMessage = { text ->
                             if (selectedPersona == null && personas.isNotEmpty()) {
-                                viewModel.selectPersona(personas.first())
+                                auraViewModel.selectPersona(personas.first())
                             }
-                            viewModel.sendMessage(text)
+                            auraViewModel.sendMessage(text)
                         },
                         onClearHistory = {
-                            viewModel.clearChatHistory()
+                            auraViewModel.clearChatHistory()
                             Toast.makeText(context, "Chat history cleared", Toast.LENGTH_SHORT).show()
                         },
                         onPlayAudio = { text ->
@@ -225,13 +237,13 @@ fun AuraStudioApp(
                         isGenerating = isVideoGenerating,
                         isAudioPlaying = isAudioPlaying,
                         onGenerateVideo = { title, personaId, prompt, style, sceneCount ->
-                            viewModel.generateVideoScript(title, personaId, prompt, style, sceneCount)
+                            auraViewModel.generateVideoScript(title, personaId, prompt, style, sceneCount)
                         },
                         onSelectProject = { proj ->
-                            viewModel.setActiveProject(proj)
+                            auraViewModel.setActiveProject(proj)
                         },
                         onToggleAudio = {
-                            viewModel.toggleAudioNarration()
+                            auraViewModel.toggleAudioNarration()
                             val currentNarration = parsedScenes.firstOrNull()?.narrationText ?: ""
                             if (currentNarration.isNotEmpty()) {
                                 onSpeakText(currentNarration)

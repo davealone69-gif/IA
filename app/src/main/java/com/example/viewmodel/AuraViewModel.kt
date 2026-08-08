@@ -9,6 +9,7 @@ import com.example.data.model.PersonaEntity
 import com.example.data.model.VideoProjectEntity
 import com.example.data.model.VideoSceneItem
 import com.example.data.repository.AuraRepository
+import com.example.ui.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,12 +18,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.util.UUID
-
-sealed interface UiState<out T> {
-    data object Loading : UiState<Nothing>
-    data class Success<T>(val data: T) : UiState<T>
-    data class Error(val message: String) : UiState<Nothing>
-}
 
 class AuraViewModel(application: Application) : AndroidViewModel(application) {
 
