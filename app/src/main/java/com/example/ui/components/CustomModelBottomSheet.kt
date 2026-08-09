@@ -177,11 +177,23 @@ fun CustomModelBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val isNameValid = name.trim().isNotBlank()
+
             // Name input
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Model Name (e.g. Maya Lin, Raven)", color = TextMuted) },
+                supportingText = {
+                    if (!isNameValid && name.isNotEmpty()) {
+                        Text("Model name cannot be empty spaces", color = NeonMagenta, fontSize = 11.sp)
+                    } else if (!isNameValid) {
+                        Text("Required *", color = TextMuted, fontSize = 11.sp)
+                    } else {
+                        Text("✓ Valid avatar name", color = NeonCyan, fontSize = 11.sp)
+                    }
+                },
+                isError = name.isNotEmpty() && !isNameValid,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("input_model_name"),
@@ -313,12 +325,13 @@ fun CustomModelBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            val isEnabled = name.trim().isNotBlank()
             Button(
                 onClick = {
-                    if (name.isNotBlank()) {
+                    if (isEnabled) {
                         onCreateModel(
-                            name,
-                            title,
+                            name.trim(),
+                            title.ifBlank { "AI Model" },
                             selectedCategory,
                             personality,
                             scenario,
@@ -335,26 +348,34 @@ fun CustomModelBottomSheet(
                     .testTag("button_submit_create_model"),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Unspecified),
                 shape = RoundedCornerShape(14.dp),
-                enabled = name.isNotBlank()
+                enabled = isEnabled
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
                         .background(
-                            brush = Brush.horizontalGradient(listOf(NeonMagenta, NeonPurple, NeonCyan)),
+                            brush = if (isEnabled) {
+                                Brush.horizontalGradient(listOf(NeonMagenta, NeonPurple, NeonCyan))
+                            } else {
+                                Brush.horizontalGradient(listOf(DarkSurfaceVariant, DarkSurfaceVariant))
+                            },
                             shape = RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = if (isEnabled) Color.White else TextMuted
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Save & Launch Model Studio",
+                            text = if (isEnabled) "Save & Launch Model Studio" else "Enter Model Name to Create",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = if (isEnabled) Color.White else TextMuted
                             )
                         )
                     }

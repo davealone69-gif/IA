@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -195,11 +199,60 @@ fun GeminiPlaygroundScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Preset Prompt Chips
+        val presetPrompts = listOf(
+            "Write a seductive opening dialogue for a cyberpunk female AI companion in a rainy alleyway.",
+            "Generate detailed persona directives for an enigmatic fantasy mage model.",
+            "Compose a 4-scene video script overview featuring Maya Lin in Neo-Tokyo.",
+            "Explain how temperature and top-p sampling impact creative roleplay AI outputs."
+        )
+
+        Text(
+            text = "Quick Sample Prompts",
+            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary, fontWeight = FontWeight.Bold)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(presetPrompts) { preset ->
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { promptInput = preset },
+                    color = DarkSurfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = preset.take(35) + "...",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = NeonCyan,
+                            fontSize = 11.sp
+                        ),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val isPromptValid = promptInput.trim().isNotBlank()
+        val isExecuting = uiState is UiState.Loading
+
         // Prompt Input
         OutlinedTextField(
             value = promptInput,
             onValueChange = { promptInput = it },
             placeholder = { Text("Enter prompt for Gemini AI model...", color = TextMuted, fontSize = 13.sp) },
+            supportingText = {
+                if (!isPromptValid && promptInput.isNotEmpty()) {
+                    Text("Prompt cannot be empty spaces", color = NeonMagenta, fontSize = 11.sp)
+                } else if (!isPromptValid) {
+                    Text("Type a prompt or choose a quick sample above", color = TextMuted, fontSize = 11.sp)
+                } else {
+                    Text("✓ Ready to execute (${promptInput.trim().length} chars)", color = NeonCyan, fontSize = 11.sp)
+                }
+            },
+            isError = promptInput.isNotEmpty() && !isPromptValid,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("input_gemini_prompt"),
@@ -219,32 +272,53 @@ fun GeminiPlaygroundScreen(
         // Submit Button
         Button(
             onClick = {
-                if (promptInput.isNotBlank()) {
+                if (isPromptValid && !isExecuting) {
                     mainViewModel.generateContent(
-                        prompt = promptInput,
+                        prompt = promptInput.trim(),
                         modelName = selectedModel,
                         systemInstruction = systemInstructionInput
                     )
                 }
             },
-            enabled = promptInput.isNotBlank() && uiState !is UiState.Loading,
+            enabled = isPromptValid && !isExecuting,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
                 .testTag("btn_execute_gemini_prompt"),
             colors = ButtonDefaults.buttonColors(
                 containerColor = NeonMagenta,
-                disabledContainerColor = DarkSurfaceVariant
+                disabledContainerColor = DarkSurfaceVariant,
+                disabledContentColor = TextMuted
             ),
             shape = RoundedCornerShape(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (uiState is UiState.Loading) "Generating Response..." else "Execute Gemini Request",
-                    fontWeight = FontWeight.Bold
-                )
+                if (isExecuting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Generating Response...",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isPromptValid) Color.White else TextMuted
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isPromptValid) "Execute Gemini Request" else "Enter Prompt to Execute",
+                        fontWeight = FontWeight.Bold,
+                        color = if (isPromptValid) Color.White else TextMuted
+                    )
+                }
             }
         }
 

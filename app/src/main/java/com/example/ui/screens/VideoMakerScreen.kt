@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.NavigateBefore
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraRoll
 import androidx.compose.material.icons.filled.Movie
@@ -219,13 +221,60 @@ fun VideoMakerScreen(
                         }
                     }
 
+                    if (videoProjects.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Saved Storyboard Projects",
+                            style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary, fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(videoProjects) { proj ->
+                                val isSelected = proj.id == activeProject?.id
+                                Surface(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { onSelectProject(proj) },
+                                    color = if (isSelected) NeonCyan.copy(alpha = 0.25f) else DarkSurface,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) NeonCyan else DarkBorder
+                                    )
+                                ) {
+                                    Text(
+                                        text = proj.title,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = if (isSelected) NeonCyan else TextSecondary,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(14.dp))
+
+                    val isTitleValid = titleInput.trim().isNotBlank()
+                    val isPromptValid = promptInput.trim().isNotBlank()
+                    val isVideoFormValid = isTitleValid && isPromptValid && !isGenerating
 
                     // Title Input
                     OutlinedTextField(
                         value = titleInput,
                         onValueChange = { titleInput = it },
                         label = { Text("Video Title (e.g. Neo-Tokyo Rain)", color = TextMuted) },
+                        supportingText = {
+                            if (!isTitleValid && titleInput.isNotEmpty()) {
+                                Text("Title cannot be empty spaces", color = NeonMagenta, fontSize = 11.sp)
+                            } else if (!isTitleValid) {
+                                Text("Required *", color = TextMuted, fontSize = 11.sp)
+                            } else {
+                                Text("✓ Valid title", color = NeonCyan, fontSize = 11.sp)
+                            }
+                        },
+                        isError = titleInput.isNotEmpty() && !isTitleValid,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeonMagenta,
@@ -244,6 +293,16 @@ fun VideoMakerScreen(
                         value = promptInput,
                         onValueChange = { promptInput = it },
                         label = { Text("Video Story Concept / Narrative Prompt", color = TextMuted) },
+                        supportingText = {
+                            if (!isPromptValid && promptInput.isNotEmpty()) {
+                                Text("Concept prompt cannot be empty spaces", color = NeonMagenta, fontSize = 11.sp)
+                            } else if (!isPromptValid) {
+                                Text("Required *", color = TextMuted, fontSize = 11.sp)
+                            } else {
+                                Text("✓ Valid concept prompt", color = NeonCyan, fontSize = 11.sp)
+                            }
+                        },
+                        isError = promptInput.isNotEmpty() && !isPromptValid,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("input_video_prompt"),
@@ -323,11 +382,12 @@ fun VideoMakerScreen(
                     // Submit Button
                     Button(
                         onClick = {
-                            val targetPersonaId = selectedPersonaId.ifEmpty { personas.firstOrNull()?.id ?: "preset_valeria" }
-                            val prompt = promptInput.ifEmpty { "Cinematic luxury lifestyle in cyberpunk metropolis" }
-                            onGenerateVideo(titleInput, targetPersonaId, prompt, selectedStyle, sceneCount.toInt())
+                            if (isVideoFormValid) {
+                                val targetPersonaId = selectedPersonaId.ifEmpty { personas.firstOrNull()?.id ?: "preset_valeria" }
+                                onGenerateVideo(titleInput.trim(), targetPersonaId, promptInput.trim(), selectedStyle, sceneCount.toInt())
+                            }
                         },
-                        enabled = !isGenerating,
+                        enabled = isVideoFormValid,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -340,7 +400,11 @@ fun VideoMakerScreen(
                                 .fillMaxWidth()
                                 .height(50.dp)
                                 .background(
-                                    brush = Brush.horizontalGradient(listOf(NeonMagenta, NeonPurple, NeonCyan)),
+                                    brush = if (isVideoFormValid) {
+                                        Brush.horizontalGradient(listOf(NeonMagenta, NeonPurple, NeonCyan))
+                                    } else {
+                                        Brush.horizontalGradient(listOf(DarkSurfaceVariant, DarkSurfaceVariant))
+                                    },
                                     shape = RoundedCornerShape(14.dp)
                                 ),
                             contentAlignment = Alignment.Center
@@ -355,13 +419,21 @@ fun VideoMakerScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Generating Script & Storyboard...", color = Color.White)
                                 } else {
-                                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = if (isVideoFormValid) Color.White else TextMuted
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Generate AI Video Storyboard",
+                                        text = when {
+                                            !isTitleValid -> "Enter Video Title to Continue"
+                                            !isPromptValid -> "Enter Story Concept to Continue"
+                                            else -> "Generate AI Video Storyboard"
+                                        },
                                         style = MaterialTheme.typography.titleMedium.copy(
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.White
+                                            color = if (isVideoFormValid) Color.White else TextMuted
                                         )
                                     )
                                 }
@@ -528,11 +600,28 @@ fun VideoMakerScreen(
                             }
 
                             // Scene Next/Prev Quick Selector
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (safeSceneIndex > 0) activeSceneIndex = safeSceneIndex - 1
+                                    },
+                                    enabled = safeSceneIndex > 0,
+                                    modifier = Modifier.size(32.dp).testTag("btn_prev_scene")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
+                                        contentDescription = "Previous Scene",
+                                        tint = if (safeSceneIndex > 0) NeonCyan else TextMuted
+                                    )
+                                }
+
                                 scenes.forEachIndexed { index, sc ->
                                     Box(
                                         modifier = Modifier
-                                            .size(28.dp)
+                                            .size(26.dp)
                                             .clip(CircleShape)
                                             .background(
                                                 if (index == safeSceneIndex) NeonCyan else DarkSurface
@@ -548,6 +637,20 @@ fun VideoMakerScreen(
                                             )
                                         )
                                     }
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        if (safeSceneIndex < scenes.size - 1) activeSceneIndex = safeSceneIndex + 1
+                                    },
+                                    enabled = safeSceneIndex < scenes.size - 1,
+                                    modifier = Modifier.size(32.dp).testTag("btn_next_scene")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.NavigateNext,
+                                        contentDescription = "Next Scene",
+                                        tint = if (safeSceneIndex < scenes.size - 1) NeonCyan else TextMuted
+                                    )
                                 }
                             }
                         }

@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.PersonaEntity
+import com.example.ui.components.AvatarSelectionBottomSheet
 import com.example.ui.components.CustomModelBottomSheet
 import com.example.ui.theme.DarkBorder
 import com.example.ui.theme.DarkObsidian
@@ -84,6 +85,7 @@ fun ModelStudioScreen(
     onDeleteCustomModel: (String) -> Unit
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    var showAvatarGallerySheet by remember { mutableStateOf(false) }
     var selectedCategoryFilter by remember { mutableStateOf("All") }
 
     val categories = listOf("All", "Photorealistic", "Cyberpunk", "Anime 3D", "Noir", "Fantasy")
@@ -147,7 +149,11 @@ fun ModelStudioScreen(
                         Surface(
                             color = NeonMagenta.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(20.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonMagenta)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonMagenta),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { showAvatarGallerySheet = true }
+                                .testTag("btn_open_gallery_sheet")
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -161,7 +167,7 @@ fun ModelStudioScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "${personas.size} Models",
+                                    text = "${personas.size} Models Grid",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = NeonMagenta,
                                         fontWeight = FontWeight.Bold
@@ -252,6 +258,23 @@ fun ModelStudioScreen(
         CustomModelBottomSheet(
             onDismiss = { showCreateSheet = false },
             onCreateModel = onCreateCustomModel
+        )
+    }
+
+    if (showAvatarGallerySheet) {
+        AvatarSelectionBottomSheet(
+            personas = personas,
+            selectedPersonaId = null,
+            onDismissRequest = { showAvatarGallerySheet = false },
+            onSelectPersona = { selected ->
+                onSelectPersonaForChat(selected)
+                showAvatarGallerySheet = false
+            },
+            onCreateNewAvatar = {
+                showAvatarGallerySheet = false
+                showCreateSheet = true
+            },
+            onDeletePersona = onDeleteCustomModel
         )
     }
 }

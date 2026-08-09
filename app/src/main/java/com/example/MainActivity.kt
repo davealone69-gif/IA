@@ -209,6 +209,7 @@ fun AuraStudioApp(
                 AuraTab.CHAT -> {
                     RoleplayChatScreen(
                         persona = selectedPersona ?: personas.firstOrNull(),
+                        allPersonas = personas,
                         messages = chatMessages,
                         isGenerating = isChatGenerating,
                         onSendMessage = { text ->
@@ -216,6 +217,17 @@ fun AuraStudioApp(
                                 auraViewModel.selectPersona(personas.first())
                             }
                             auraViewModel.sendMessage(text)
+                        },
+                        onSelectPersona = { persona ->
+                            auraViewModel.selectPersona(persona)
+                            Toast.makeText(context, "Active character set to ${persona.name}", Toast.LENGTH_SHORT).show()
+                        },
+                        onCreateCustomModelRequested = {
+                            selectedTab = AuraTab.STUDIO
+                        },
+                        onDeletePersona = { id ->
+                            auraViewModel.deletePersona(id)
+                            Toast.makeText(context, "Avatar deleted", Toast.LENGTH_SHORT).show()
                         },
                         onClearHistory = {
                             auraViewModel.clearChatHistory()

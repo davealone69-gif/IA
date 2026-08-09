@@ -54,8 +54,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import com.example.data.model.ChatMessageEntity
 import com.example.data.model.PersonaEntity
+import androidx.compose.material.icons.filled.Face
+import com.example.ui.components.AvatarSelectionBottomSheet
 import com.example.ui.components.ChatMessageItem
 import com.example.ui.theme.DarkBorder
 import com.example.ui.theme.DarkObsidian
@@ -72,13 +77,18 @@ import com.example.ui.theme.TextSecondary
 @Composable
 fun RoleplayChatScreen(
     persona: PersonaEntity?,
+    allPersonas: List<PersonaEntity> = emptyList(),
     messages: List<ChatMessageEntity>,
     isGenerating: Boolean,
     onSendMessage: (String) -> Unit,
+    onSelectPersona: (PersonaEntity) -> Unit = {},
+    onCreateCustomModelRequested: () -> Unit = {},
+    onDeletePersona: (String) -> Unit = {},
     onClearHistory: () -> Unit,
     onPlayAudio: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+    var showAvatarGallerySheet by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     val quickActionPrompts = remember(persona) {
@@ -90,10 +100,30 @@ fun RoleplayChatScreen(
         )
     }
 
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages.size, isGenerating) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            val targetIndex = if (isGenerating) messages.size else messages.size - 1
+            if (targetIndex >= 0) {
+                listState.animateScrollToItem(targetIndex)
+            }
         }
+    }
+
+    if (showAvatarGallerySheet) {
+        AvatarSelectionBottomSheet(
+            personas = allPersonas.ifEmpty { if (persona != null) listOf(persona) else emptyList() },
+            selectedPersonaId = persona?.id,
+            onDismissRequest = { showAvatarGallerySheet = false },
+            onSelectPersona = { newPersona ->
+                onSelectPersona(newPersona)
+                showAvatarGallerySheet = false
+            },
+            onCreateNewAvatar = {
+                showAvatarGallerySheet = false
+                onCreateCustomModelRequested()
+            },
+            onDeletePersona = onDeletePersona
+        )
     }
 
     Column(
@@ -115,7 +145,13 @@ fun RoleplayChatScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 if (persona != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showAvatarGallerySheet = true }
+                            .padding(4.dp)
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
@@ -152,9 +188,9 @@ fun RoleplayChatScreen(
                                 }
                             }
                             Text(
-                                text = persona.title,
+                                text = "${persona.title} • Tap to switch avatar",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextMuted,
+                                    color = NeonCyan,
                                     fontSize = 11.sp
                                 )
                             )
@@ -162,6 +198,38 @@ fun RoleplayChatScreen(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Switch Avatar Button
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showAvatarGallerySheet = true }
+                                .testTag("btn_switch_avatar_gallery"),
+                            color = NeonMagenta.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonMagenta)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Face,
+                                    contentDescription = "Avatar Gallery",
+                                    tint = NeonMagenta,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Avatars",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = NeonMagenta,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
                         IconButton(
                             onClick = onClearHistory,
                             modifier = Modifier.testTag("btn_clear_chat_history")
@@ -174,10 +242,34 @@ fun RoleplayChatScreen(
                         }
                     }
                 } else {
-                    Text(
-                        text = "Select a Model from Studio",
-                        style = MaterialTheme.typography.titleMedium.copy(color = TextSecondary)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "No Model Selected",
+                            style = MaterialTheme.typography.titleMedium.copy(color = TextSecondary)
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showAvatarGallerySheet = true }
+                                .testTag("btn_open_avatar_gallery_empty"),
+                            color = NeonCyan.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NeonCyan)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = Icons.Default.Face, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Select Avatar", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -363,6 +455,8 @@ fun RoleplayChatScreen(
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isInputValid = inputText.trim().isNotBlank() && !isGenerating
+
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
@@ -370,6 +464,15 @@ fun RoleplayChatScreen(
                         modifier = Modifier
                             .weight(1f)
                             .testTag("input_roleplay_chat"),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (isInputValid) {
+                                    onSendMessage(inputText.trim())
+                                    inputText = ""
+                                }
+                            }
+                        ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeonMagenta,
                             unfocusedBorderColor = DarkBorder,
@@ -384,16 +487,16 @@ fun RoleplayChatScreen(
 
                     IconButton(
                         onClick = {
-                            if (inputText.isNotBlank()) {
-                                onSendMessage(inputText)
+                            if (isInputValid) {
+                                onSendMessage(inputText.trim())
                                 inputText = ""
                             }
                         },
-                        enabled = inputText.isNotBlank() && !isGenerating,
+                        enabled = isInputValid,
                         modifier = Modifier
                             .size(46.dp)
                             .background(
-                                brush = if (inputText.isNotBlank() && !isGenerating)
+                                brush = if (isInputValid)
                                     Brush.linearGradient(listOf(NeonMagenta, NeonPurple))
                                 else Brush.linearGradient(listOf(DarkSurfaceVariant, DarkSurfaceVariant)),
                                 shape = CircleShape
@@ -403,7 +506,7 @@ fun RoleplayChatScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
-                            tint = Color.White
+                            tint = if (isInputValid) Color.White else TextMuted
                         )
                     }
                 }
