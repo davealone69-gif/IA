@@ -186,11 +186,11 @@ fun AuraStudioApp(
                             auraViewModel.selectPersona(persona)
                             selectedTab = AuraTab.VIDEO
                         },
-                        onCreateCustomModel = { name, title, category, personality, scenario, voiceStyle, systemPrompt, creativity ->
+                        onCreateCustomModel = { name, title, age, category, personality, backstory, scenario, voiceStyle, systemPrompt, creativity ->
                             auraViewModel.createCustomPersona(
-                                name, title, category, personality, scenario, voiceStyle, systemPrompt, creativity
+                                name, title, age, category, personality, backstory, scenario, voiceStyle, systemPrompt, creativity
                             )
-                            Toast.makeText(context, "Model '$name' created & saved!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Character '$name' saved to Room Database!", Toast.LENGTH_SHORT).show()
                         },
                         onDeleteCustomModel = { id ->
                             auraViewModel.deletePersona(id)

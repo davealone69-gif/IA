@@ -9,11 +9,13 @@ import com.example.data.model.PersonaEntity
 import com.example.data.model.VideoProjectEntity
 import com.example.data.model.VideoSceneItem
 import com.example.data.repository.AuraRepository
-import com.example.ui.UiState
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -40,9 +42,21 @@ class AuraViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedPersona = MutableStateFlow<PersonaEntity?>(null)
     val selectedPersona: StateFlow<PersonaEntity?> = _selectedPersona.asStateFlow()
 
-    // Chat History for Active Persona
-    private val _chatMessages = MutableStateFlow<List<ChatMessageEntity>>(emptyList())
-    val chatMessages: StateFlow<List<ChatMessageEntity>> = _chatMessages.asStateFlow()
+    // Chat History for Active Persona automatically observed from Room
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val chatMessages: StateFlow<List<ChatMessageEntity>> = _selectedPersona
+        .flatMapLatest { persona ->
+            if (persona != null) {
+                repository.getChatMessages(persona.id)
+            } else {
+                flowOf(emptyList())
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     // Chat Loading state
     private val _isChatGenerating = MutableStateFlow(false)
@@ -66,15 +80,20 @@ class AuraViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.seedDefaultPresetsIfEmpty()
         }
+
+        viewModelScope.launch {
+            personas.collect { list ->
+                if (_selectedPersona.value == null && list.isNotEmpty()) {
+                    _selectedPersona.value = list.first()
+                } else if (_selectedPersona.value != null && list.none { it.id == _selectedPersona.value?.id }) {
+                    _selectedPersona.value = list.firstOrNull()
+                }
+            }
+        }
     }
 
     fun selectPersona(persona: PersonaEntity) {
         _selectedPersona.value = persona
-        viewModelScope.launch {
-            repository.getChatMessages(persona.id).collect { messages ->
-                _chatMessages.value = messages
-            }
-        }
     }
 
     fun sendMessage(userText: String) {
@@ -84,7 +103,7 @@ class AuraViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isChatGenerating.value = true
             try {
-                val currentHistory = _chatMessages.value.map { it.sender to it.text }
+                val currentHistory = chatMessages.value.map { it.sender to it.text }
                 repository.sendMessage(persona, userText, currentHistory)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -104,8 +123,10 @@ class AuraViewModel(application: Application) : AndroidViewModel(application) {
     fun createCustomPersona(
         name: String,
         title: String,
+        age: Int = 24,
         category: String,
         personality: String,
+        backstory: String = "",
         scenario: String,
         voiceStyle: String,
         systemPrompt: String,
@@ -126,20 +147,29 @@ class AuraViewModel(application: Application) : AndroidViewModel(application) {
                 "Noir" -> "🍸"
                 else -> "✨"
             }
+            val formattedSystemPrompt = systemPrompt.ifEmpty {
+                buildString {
+                    append("You are $name, $age years old, a $title.\n")
+                    if (personality.isNotBlank()) append("Personality: $personality\n")
+                    if (backstory.isNotBlank()) append("Backstory: $backstory\n")
+                    if (scenario.isNotBlank()) append("Current Scenario: $scenario\n")
+                    append("You speak naturally in character, expressing emotion and using asterisks for actions.")
+                }
+            }
             val newPersona = PersonaEntity(
                 id = "custom_" + UUID.randomUUID().toString().take(8),
                 name = name.ifEmpty { "Custom Persona" },
-                title = title.ifEmpty { "AI Female Model" },
+                title = title.ifEmpty { "AI Character" },
+                age = age,
                 avatarCategory = category,
                 avatarColorHex = colorHex,
                 avatarSymbol = symbol,
                 personality = personality.ifEmpty { "Charismatic, expressive, attentive" },
+                backstory = backstory,
                 scenario = scenario.ifEmpty { "Sleek modern lounge scene" },
                 voiceStyle = voiceStyle.ifEmpty { "Smooth, expressive voice" },
                 creativityTemp = creativity,
-                systemPrompt = systemPrompt.ifEmpty {
-                    "You are $name, a $title. You are engaging in creative, deep roleplay dialogue. Use asterisks for actions."
-                },
+                systemPrompt = formattedSystemPrompt,
                 isCustom = true
             )
             repository.savePersona(newPersona)

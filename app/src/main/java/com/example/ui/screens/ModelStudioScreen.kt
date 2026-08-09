@@ -75,8 +75,10 @@ fun ModelStudioScreen(
     onCreateCustomModel: (
         name: String,
         title: String,
+        age: Int,
         category: String,
         personality: String,
+        backstory: String,
         scenario: String,
         voiceStyle: String,
         systemPrompt: String,
@@ -85,8 +87,22 @@ fun ModelStudioScreen(
     onDeleteCustomModel: (String) -> Unit
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    var showFullCreateScreen by remember { mutableStateOf(false) }
     var showAvatarGallerySheet by remember { mutableStateOf(false) }
     var selectedCategoryFilter by remember { mutableStateOf("All") }
+
+    if (showFullCreateScreen) {
+        CreatePersonaScreen(
+            onBack = { showFullCreateScreen = false },
+            onSavePersona = { name, title, age, category, personality, backstory, scenario, voiceStyle, systemPrompt, creativity ->
+                onCreateCustomModel(
+                    name, title, age, category, personality, backstory, scenario, voiceStyle, systemPrompt, creativity
+                )
+                showFullCreateScreen = false
+            }
+        )
+        return
+    }
 
     val categories = listOf("All", "Photorealistic", "Cyberpunk", "Anime 3D", "Noir", "Fantasy")
     val filteredPersonas = remember(personas, selectedCategoryFilter) {
@@ -178,6 +194,64 @@ fun ModelStudioScreen(
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
+
+                    // Full Character Creator Action Banner
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { showFullCreateScreen = true }
+                            .testTag("btn_open_full_creator_screen"),
+                        color = DarkSurfaceVariant,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Brush.linearGradient(listOf(NeonMagenta, NeonPurple))),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "+ Create Custom Character Persona",
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                    Text(
+                                        text = "Define Name, Age, Personality, Backstory & Save to Room DB",
+                                        style = MaterialTheme.typography.labelSmall.copy(color = NeonCyan, fontSize = 10.sp)
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = NeonMagenta,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Category Filters Row
                     LazyRow(

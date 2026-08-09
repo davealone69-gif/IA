@@ -66,8 +66,10 @@ fun CustomModelBottomSheet(
     onCreateModel: (
         name: String,
         title: String,
+        age: Int,
         category: String,
         personality: String,
+        backstory: String,
         scenario: String,
         voiceStyle: String,
         systemPrompt: String,
@@ -76,8 +78,10 @@ fun CustomModelBottomSheet(
 ) {
     var name by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
+    var ageText by remember { mutableStateOf("24") }
     var selectedCategory by remember { mutableStateOf("Photorealistic") }
     var personality by remember { mutableStateOf("") }
+    var backstory by remember { mutableStateOf("") }
     var scenario by remember { mutableStateOf("") }
     var voiceStyle by remember { mutableStateOf("") }
     var systemPrompt by remember { mutableStateOf("") }
@@ -245,6 +249,24 @@ fun CustomModelBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Backstory
+            OutlinedTextField(
+                value = backstory,
+                onValueChange = { backstory = it },
+                label = { Text("Backstory & History", color = TextMuted) },
+                placeholder = { Text("Origin story or background history...", color = TextMuted) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = NeonMagenta,
+                    unfocusedBorderColor = DarkBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Scenario
             OutlinedTextField(
                 value = scenario,
@@ -329,11 +351,14 @@ fun CustomModelBottomSheet(
             Button(
                 onClick = {
                     if (isEnabled) {
+                        val parsedAge = ageText.toIntOrNull() ?: 24
                         onCreateModel(
                             name.trim(),
                             title.ifBlank { "AI Model" },
+                            parsedAge,
                             selectedCategory,
                             personality,
+                            backstory,
                             scenario,
                             voiceStyle,
                             systemPrompt,
